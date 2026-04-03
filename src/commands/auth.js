@@ -94,8 +94,7 @@ async function googleOAuthFlow() {
 
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SheetLink</title><script>window.location.replace("https://sheetlink.app/cli/welcome");</script></head><body></body></html>');
-        server.closeAllConnections?.();
-        server.close();
+        res.on('finish', () => { server.closeAllConnections?.(); server.close(); });
 
         if (error) return reject(new Error(`OAuth error: ${error}`));
         if (returnedState !== state) return reject(new Error('State mismatch — possible CSRF'));
