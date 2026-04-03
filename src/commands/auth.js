@@ -18,7 +18,8 @@ import { randomBytes } from 'crypto';
 import { writeConfig, getApiUrl } from '../config.js';
 import { getTierStatus, listItems } from '../api.js';
 
-const GOOGLE_CLIENT_ID = '967710910027-qq2tuel7vsi2i06h4h096hbvok8kfmhk.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '967710910027-j88nejbs5rnjb5b4801er8sffkv4crdb.apps.googleusercontent.com';
+const GOOGLE_CLIENT_SECRET = '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';
 const REDIRECT_PORT = 9876;
 const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}/callback`;
 
@@ -69,60 +70,38 @@ export async function cmdAuth(options) {
 async function googleOAuthFlow() {
   return new Promise((resolve, reject) => {
     const state = randomBytes(16).toString('hex');
-    const nonce = randomBytes(16).toString('hex');
 
+    // Authorization code flow (Desktop app client)
     const params = new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,
       redirect_uri: REDIRECT_URI,
-      response_type: 'id_token',
+      response_type: 'code',
       scope: 'openid email profile',
       state,
-      nonce,
+      access_type: 'online',
     });
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 
-    // Start local server to catch the redirect
+    // Start local server to catch the authorization code redirect
     const server = http.createServer((req, res) => {
       const url = new URL(req.url, `http://localhost:${REDIRECT_PORT}`);
 
-      // Google returns id_token in the fragment (#) which is client-side only.
-      // We serve a tiny page that POSTs it to our server.
       if (url.pathname === '/callback') {
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(`<!DOCTYPE html>
-<html>
-<body>
-<script>
-  const params = new URLSearchParams(location.hash.slice(1));
-  fetch('/token', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ id_token: params.get('id_token'), state: params.get('state') })
-  }).then(() => {
-    document.body.innerHTML = '<p>Authenticated! You can close this tab.</p>';
-  });
-</script>
-</body>
-</html>`);
-        return;
-      }
+        const code = url.searchParams.get('code');
+        const returnedState = url.searchParams.get('state');
+        const error = url.searchParams.get('error');
 
-      if (url.pathname === '/token' && req.method === 'POST') {
-        let body = '';
-        req.on('data', d => body += d);
-        req.on('end', () => {
-          res.writeHead(200);
-          res.end('ok');
-          server.close();
-          try {
-            const { id_token, state: returnedState } = JSON.parse(body);
-            if (returnedState !== state) return reject(new Error('State mismatch — possible CSRF'));
-            resolve(id_token);
-          } catch (e) {
-            reject(e);
-          }
-        });
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end('<!DOCTYPE html><html><body><p>Authenticated! You can close this tab.</p></body></html>');
+        server.close();
+
+        if (error) return reject(new Error(`OAuth error: ${error}`));
+        if (returnedState !== state) return reject(new Error('State mismatch — possible CSRF'));
+        if (!code) return reject(new Error('No authorization code received'));
+
+        // Exchange code for id_token via token endpoint
+        exchangeCodeForIdToken(code).then(resolve).catch(reject);
         return;
       }
 
@@ -142,6 +121,29 @@ async function googleOAuthFlow() {
     server.on('error', reject);
     setTimeout(() => { server.close(); reject(new Error('OAuth timeout (2 minutes)')); }, 120_000);
   });
+}
+
+async function exchangeCodeForIdToken(code) {
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code,
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      redirect_uri: REDIRECT_URI,
+      grant_type: 'authorization_code',
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`Token exchange failed: ${err.error_description || err.error || res.statusText}`);
+  }
+
+  const data = await res.json();
+  if (!data.id_token) throw new Error('No id_token in token response');
+  return data.id_token;
 }
 
 async function exchangeGoogleToken(idToken) {

@@ -1,6 +1,6 @@
 {
   "name": "sheetlink",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "CLI for SheetLink — sync your bank transactions to any destination",
   "type": "module",
   "bin": {
