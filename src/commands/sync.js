@@ -39,16 +39,23 @@ export async function cmdSync(options) {
   const allAccounts = [];
   const results = [];
 
+  const spinnerFrames = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
+
   for (const id of itemIds) {
-    process.stderr.write(`Syncing ${id}...`);
+    let i = 0;
+    const spinner = setInterval(() => {
+      process.stderr.write(`\r${spinnerFrames[i++ % spinnerFrames.length]} Syncing ${id}...`);
+    }, 80);
     try {
       const result = await syncItem(id);
       allTransactions.push(...(result.transactions || []));
       allAccounts.push(...(result.accounts || []));
       results.push({ item_id: id, ...result });
-      process.stderr.write(` ${result.transactions?.length ?? 0} transactions\n`);
+      clearInterval(spinner);
+      process.stderr.write(`\r✓ Synced ${id} — ${result.transactions?.length ?? 0} transactions\n`);
     } catch (e) {
-      process.stderr.write(` error: ${e.message}\n`);
+      clearInterval(spinner);
+      process.stderr.write(`\r✗ ${id} — ${e.message}\n`);
     }
   }
 
