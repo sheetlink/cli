@@ -1,0 +1,41 @@
+{
+  "name": "sheetlink",
+  "version": "0.1.0",
+  "description": "CLI for SheetLink — sync your bank transactions to any destination",
+  "type": "module",
+  "bin": {
+    "sheetlink": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "files": [
+    "src/"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "open": "^10.1.0",
+    "pg": "^8.13.3",
+    "better-sqlite3": "^11.9.1"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "sheetlink",
+    "plaid",
+    "finance",
+    "banking",
+    "transactions",
+    "cli"
+  ],
+  "author": "Rudy Martin Del Campo <rudy@sheetlink.app>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sheetlink/cli"
+  }
+}
