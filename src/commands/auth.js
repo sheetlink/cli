@@ -120,7 +120,8 @@ async function googleOAuthFlow() {
     });
 
     server.on('error', reject);
-    setTimeout(() => { server.closeAllConnections?.(); server.close(); reject(new Error('OAuth timeout (2 minutes)')); }, 120_000);
+    const timeout = setTimeout(() => { server.closeAllConnections?.(); server.close(); reject(new Error('OAuth timeout (2 minutes)')); }, 120_000);
+    server.on('close', () => clearTimeout(timeout));
   });
 }
 
