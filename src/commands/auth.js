@@ -135,6 +135,7 @@ async function googleOAuthFlow() {
   </style>
 </head>
 <body>
+  <script>history.replaceState(null, '', '/');</script>
   <div class="card">
     <div class="icon">
       <svg width="24" height="24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
@@ -146,6 +147,7 @@ async function googleOAuthFlow() {
   </div>
 </body>
 </html>`);
+        server.closeAllConnections?.();
         server.close();
 
         if (error) return reject(new Error(`OAuth error: ${error}`));
@@ -171,7 +173,7 @@ async function googleOAuthFlow() {
     });
 
     server.on('error', reject);
-    setTimeout(() => { server.close(); reject(new Error('OAuth timeout (2 minutes)')); }, 120_000);
+    setTimeout(() => { server.closeAllConnections?.(); server.close(); reject(new Error('OAuth timeout (2 minutes)')); }, 120_000);
   });
 }
 
