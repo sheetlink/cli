@@ -65,6 +65,7 @@ export async function cmdAuth(options) {
   console.log('Authenticated. JWT saved to ~/.sheetlink/config.json');
   console.log('Note: JWT expires in ~1 hour. Re-run `sheetlink auth` when needed.');
   console.log('For unattended automation, upgrade to MAX and use `sheetlink auth --api-key sl_...`');
+  process.exit(0);
 }
 
 async function googleOAuthFlow() {
