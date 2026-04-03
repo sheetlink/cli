@@ -16,7 +16,7 @@
 import http from 'http';
 import { randomBytes } from 'crypto';
 import { writeConfig, getApiUrl } from '../config.js';
-import { getTierStatus } from '../api.js';
+import { getTierStatus, listItems } from '../api.js';
 
 const GOOGLE_CLIENT_ID = '967710910027-qq2tuel7vsi2i06h4h096hbvok8kfmhk.apps.googleusercontent.com';
 const REDIRECT_PORT = 9876;
@@ -41,14 +41,10 @@ export async function cmdAuth(options) {
     console.log('API key saved to ~/.sheetlink/config.json');
     console.log('');
 
-    // Verify it works
+    // Verify it works by hitting an API-key-aware endpoint
     try {
-      const status = await getTierStatus();
-      if (status.subscription_tier !== 'max') {
-        console.error(`Warning: This key belongs to a ${status.subscription_tier} account. MAX tier is required for API key auth.`);
-        process.exit(1);
-      }
-      console.log(`Authenticated as ${status.email} (${status.subscription_tier} tier)`);
+      const { items } = await listItems();
+      console.log(`Authenticated. ${items.length} bank${items.length !== 1 ? 's' : ''} connected.`);
     } catch (e) {
       console.error(`Could not verify key: ${e.message}`);
       process.exit(1);
