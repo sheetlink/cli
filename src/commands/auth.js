@@ -93,60 +93,7 @@ async function googleOAuthFlow() {
         const error = url.searchParams.get('error');
 
         res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SheetLink — Authenticated</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #f9fafb;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      color: #111;
-    }
-    .card {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 16px;
-      padding: 48px 40px;
-      text-align: center;
-      max-width: 380px;
-      width: 90%;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-    }
-    .icon {
-      width: 48px;
-      height: 48px;
-      background: #d1fae5;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 20px;
-    }
-    h1 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-    p { font-size: 14px; color: #6b7280; line-height: 1.5; }
-  </style>
-</head>
-<body>
-  <script>history.replaceState(null, '', '/');</script>
-  <div class="card">
-    <div class="icon">
-      <svg width="24" height="24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-    </div>
-    <h1>You're signed in</h1>
-    <p>Authentication complete. You can close this tab and return to the terminal.</p>
-  </div>
-</body>
-</html>`);
+        res.end('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SheetLink</title><script>window.location.replace("https://sheetlink.app/cli/welcome");</script></head><body></body></html>');
         server.closeAllConnections?.();
         server.close();
 
