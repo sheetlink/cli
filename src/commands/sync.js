@@ -76,8 +76,8 @@ export async function cmdSync(options) {
   }
 
   if (output.startsWith('sqlite://')) {
-    // sqlite:///absolute/path or sqlite://relative/path
-    const dbPath = output.replace(/^sqlite:\/\/\/?/, '') || './sheetlink.db';
+    // sqlite:///absolute/path → /absolute/path, sqlite://relative/path → relative/path
+    const dbPath = output.replace(/^sqlite:\/\//, '') || './sheetlink.db';
     writeSQLite(allTransactions, allAccounts, dbPath);
     return;
   }
