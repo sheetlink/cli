@@ -41,5 +41,5 @@ function formatRow(txn) {
 export function writeCsv(transactions, filePath = './sheetlink-transactions.csv') {
   const lines = [HEADERS.join(','), ...transactions.map(formatRow)];
   fs.writeFileSync(filePath, lines.join('\n') + '\n', 'utf8');
-  console.error(`Wrote ${transactions.length} transactions to ${filePath}`);
+  console.log(`Wrote ${transactions.length} transactions to ${filePath}`);
 }

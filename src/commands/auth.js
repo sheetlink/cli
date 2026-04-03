@@ -38,13 +38,12 @@ export async function cmdAuth(options) {
     console.error('  export SHEETLINK_API_KEY=sl_...');
     console.error('');
 
-    writeConfig({ api_key: options.apiKey, jwt: null });
-    console.log('API key saved to ~/.sheetlink/config.json');
-    console.log('');
-
-    // Verify it works by hitting an API-key-aware endpoint
+    // Verify before saving
     try {
       const { items } = await listItems();
+      writeConfig({ api_key: options.apiKey, jwt: null });
+      console.log('API key saved to ~/.sheetlink/config.json');
+      console.log('');
       console.log(`Authenticated. ${items.length} bank${items.length !== 1 ? 's' : ''} connected.`);
     } catch (e) {
       console.error(`Could not verify key: ${e.message}`);
@@ -119,7 +118,13 @@ async function googleOAuthFlow() {
       }
     });
 
-    server.on('error', reject);
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        reject(new Error(`Port ${REDIRECT_PORT} is already in use. Close any other process using it and try again.`));
+      } else {
+        reject(err);
+      }
+    });
     const timeout = setTimeout(() => { server.closeAllConnections?.(); server.close(); reject(new Error('OAuth timeout (2 minutes)')); }, 120_000);
     server.on('close', () => clearTimeout(timeout));
   });

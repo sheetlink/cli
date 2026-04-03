@@ -91,5 +91,5 @@ export async function writeSQLite(transactions, accounts, dbPath) {
   accBatch(accounts);
   db.close();
 
-  console.error(`Synced ${transactions.length} transactions and ${accounts.length} accounts to ${dbPath}`);
+  console.log(`Synced ${transactions.length} transactions and ${accounts.length} accounts to ${dbPath}`);
 }

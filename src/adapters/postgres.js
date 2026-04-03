@@ -91,7 +91,7 @@ export async function writePostgres(transactions, accounts, connectionString) {
       ]);
     }
 
-    console.error(`Synced ${transactions.length} transactions and ${accounts.length} accounts to Postgres`);
+    console.log(`Synced ${transactions.length} transactions and ${accounts.length} accounts to Postgres`);
   } finally {
     await client.end();
   }

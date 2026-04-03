@@ -16,9 +16,11 @@ Requires a [SheetLink](https://sheetlink.app) account on the **PRO** or **MAX** 
 Authenticate with SheetLink.
 
 ```bash
-sheetlink auth                        # OAuth login (PRO)
+sheetlink auth                        # OAuth login (PRO) — opens browser, JWT valid for ~1 hour
 sheetlink auth --api-key sl_...       # API key (MAX — for automation)
 ```
+
+> **Security note:** Avoid passing `--api-key` directly in commands — it may appear in your shell history. Use the `SHEETLINK_API_KEY` environment variable instead.
 
 ### `sheetlink sync`
 Sync transactions from all connected banks.
@@ -26,12 +28,14 @@ Sync transactions from all connected banks.
 ```bash
 sheetlink sync                                        # JSON to stdout (default)
 sheetlink sync | jq '.items[].transactions | length'  # Pipe to jq
-sheetlink sync --output csv                           # CSV snapshot
+sheetlink sync --output csv                           # CSV snapshot (overwrites each run)
 sheetlink sync --output csv --file ~/finances.csv     # CSV to custom path
 sheetlink sync --output postgres://localhost/mydb     # Upsert to Postgres (MAX)
 sheetlink sync --output sqlite:///~/finance.db        # Upsert to SQLite (MAX)
 sheetlink sync --item <item_id>                       # One bank only
 ```
+
+> **Note:** CSV output overwrites the file on every run. For an append/dedup history, use Postgres or SQLite.
 
 ### `sheetlink items`
 List connected bank accounts.
