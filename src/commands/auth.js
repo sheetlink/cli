@@ -21,7 +21,7 @@ import { getTierStatus, listItems } from '../api.js';
 const GOOGLE_CLIENT_ID = '967710910027-j88nejbs5rnjb5b4801er8sffkv4crdb.apps.googleusercontent.com';
 const GOOGLE_CLIENT_SECRET = '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';
 const REDIRECT_PORT = 9876;
-const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}/callback`;
+const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}`;
 
 export async function cmdAuth(options) {
   // --- API key path ---
@@ -87,7 +87,7 @@ async function googleOAuthFlow() {
     const server = http.createServer((req, res) => {
       const url = new URL(req.url, `http://localhost:${REDIRECT_PORT}`);
 
-      if (url.pathname === '/callback') {
+      if (url.pathname === '/' || url.pathname === '/callback') {
         const code = url.searchParams.get('code');
         const returnedState = url.searchParams.get('state');
         const error = url.searchParams.get('error');
