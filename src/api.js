@@ -28,12 +28,21 @@ async function request(method, path, body = null) {
 
   if (!res.ok) {
     let detail = res.statusText;
+    let errorBody = null;
     try {
-      const err = await res.json();
-      detail = err.detail || JSON.stringify(err);
+      errorBody = await res.json();
+      detail = errorBody.detail || JSON.stringify(errorBody);
     } catch {}
 
     if (res.status === 401) {
+      // Structured ITEM_LOGIN_REQUIRED from backend
+      const detailObj = typeof detail === 'object' ? detail : (errorBody?.detail ?? null);
+      if (detailObj && detailObj.error_code === 'ITEM_LOGIN_REQUIRED') {
+        const err = new Error('ITEM_LOGIN_REQUIRED');
+        err.code = 'ITEM_LOGIN_REQUIRED';
+        err.item_id = detailObj.item_id;
+        throw err;
+      }
       console.error('Authentication failed. Run `sheetlink auth` to re-authenticate.');
       process.exit(1);
     }

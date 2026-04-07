@@ -23,6 +23,7 @@ export async function cmdSync(options) {
 
   // Collect items to sync
   let itemIds;
+  const institutionNames = {};
   if (itemId) {
     itemIds = [itemId];
   } else {
@@ -30,6 +31,9 @@ export async function cmdSync(options) {
     if (!items || items.length === 0) {
       console.error('No connected banks found. Connect a bank at https://sheetlink.app/dashboard');
       process.exit(1);
+    }
+    for (const item of items) {
+      if (item.institution_name) institutionNames[item.item_id] = item.institution_name;
     }
     itemIds = items.map(i => i.item_id);
   }
@@ -55,7 +59,12 @@ export async function cmdSync(options) {
       process.stderr.write(`\r✓ Synced ${id} — ${result.transactions?.length ?? 0} transactions\n`);
     } catch (e) {
       clearInterval(spinner);
-      process.stderr.write(`\r✗ ${id} — ${e.message}\n`);
+      if (e.code === 'ITEM_LOGIN_REQUIRED') {
+        const name = institutionNames[id] || id;
+        process.stderr.write(`\r✗ ${name} — Login required. Re-authenticate at https://sheetlink.app/dashboard/banks\n`);
+      } else {
+        process.stderr.write(`\r✗ ${id} — ${e.message}\n`);
+      }
     }
   }
 
