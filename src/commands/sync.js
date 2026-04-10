@@ -8,6 +8,9 @@
  *   csv [--file path]         - Snapshot CSV, overwrites each run (PRO+)
  *   postgres://...            - Upsert to Postgres (MAX only)
  *   sqlite:///path/to/db      - Upsert to SQLite (MAX only)
+ *
+ * Flags:
+ *   --slim                    - Write legacy 14-column schema instead of full 34-column schema
  */
 
 import { listItems, syncItem } from '../api.js';
@@ -17,9 +20,30 @@ import { writeCsv } from '../adapters/csv.js';
 import { writePostgres } from '../adapters/postgres.js';
 import { writeSQLite } from '../adapters/sqlite.js';
 
+/**
+ * Enrich transactions with account_name and account_mask from the accounts array.
+ * The API returns accounts and transactions separately; transactions only carry account_id.
+ */
+function enrichTransactions(transactions, accounts) {
+  const accountMap = {};
+  for (const acc of accounts) {
+    accountMap[acc.account_id] = acc;
+  }
+  return transactions.map(tx => {
+    const acc = accountMap[tx.account_id];
+    return {
+      ...tx,
+      account_name: acc?.name ?? tx.account_name ?? null,
+      account_mask: acc?.mask ?? tx.account_mask ?? null,
+      persistent_account_id: acc?.persistent_account_id ?? tx.persistent_account_id ?? null,
+    };
+  });
+}
+
 export async function cmdSync(options) {
   const output = options.output || getDefaultOutput();
   const itemId = options.item || null;
+  const slim = !!options.slim;
 
   // Collect items to sync
   let itemIds;
@@ -52,11 +76,12 @@ export async function cmdSync(options) {
     }, 80);
     try {
       const result = await syncItem(id);
-      allTransactions.push(...(result.transactions || []));
+      const enriched = enrichTransactions(result.transactions || [], result.accounts || []);
+      allTransactions.push(...enriched);
       allAccounts.push(...(result.accounts || []));
-      results.push({ item_id: id, ...result });
+      results.push({ item_id: id, ...result, transactions: enriched });
       clearInterval(spinner);
-      process.stderr.write(`\r✓ Synced ${id} — ${result.transactions?.length ?? 0} transactions\n`);
+      process.stderr.write(`\r✓ Synced ${id} — ${enriched.length} transactions\n`);
     } catch (e) {
       clearInterval(spinner);
       if (e.code === 'ITEM_LOGIN_REQUIRED') {
@@ -82,19 +107,18 @@ export async function cmdSync(options) {
   }
 
   if (output === 'csv') {
-    writeCsv(allTransactions, options.file);
+    writeCsv(allTransactions, options.file, { slim });
     return;
   }
 
   if (output.startsWith('postgres://') || output.startsWith('postgresql://')) {
-    await writePostgres(allTransactions, allAccounts, output);
+    await writePostgres(allTransactions, allAccounts, output, { slim });
     return;
   }
 
   if (output.startsWith('sqlite://')) {
-    // sqlite:///absolute/path → /absolute/path, sqlite://relative/path → relative/path
     const dbPath = output.replace(/^sqlite:\/\//, '') || './sheetlink.db';
-    writeSQLite(allTransactions, allAccounts, dbPath);
+    writeSQLite(allTransactions, allAccounts, dbPath, { slim });
     return;
   }
 

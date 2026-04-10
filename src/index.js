@@ -42,6 +42,7 @@ program
   .option('--output <dest>', 'Output destination: json (default), csv, postgres://..., sqlite:///path')
   .option('--file <path>', 'File path for CSV output (default: ./sheetlink-transactions.csv)')
   .option('--item <item_id>', 'Sync a specific item only (default: all connected banks)')
+  .option('--slim', 'Write 14-column schema instead of full 34-column schema')
   .addHelpText('after', `
 Examples:
   sheetlink sync                                         JSON to stdout (pipeable)
@@ -50,6 +51,7 @@ Examples:
   sheetlink sync --output csv --file ~/finances.csv      CSV to custom path
   sheetlink sync --output postgres://localhost/mydb      Upsert to Postgres (MAX only)
   sheetlink sync --output sqlite:///~/finance.db         Upsert to SQLite (MAX only)
+  sheetlink sync --output postgres://localhost/mydb --slim  Legacy 14-column schema
   sheetlink sync --item VBX93wmRY4Iy...                  Sync one bank only
   `)
   .action(cmdSync);
