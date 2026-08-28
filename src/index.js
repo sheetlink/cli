@@ -43,6 +43,8 @@ program
   .option('--file <path>', 'File path for CSV output (default: ./sheetlink-transactions.csv)')
   .option('--item <item_id>', 'Sync a specific item only (default: all connected banks)')
   .option('--slim', 'Write 14-column schema instead of full 34-column schema')
+  .option('--from <date>', 'Start of a custom date range (YYYY-MM-DD). Clamped to the plan\'s 730-day max')
+  .option('--to <date>', 'End of a custom date range (YYYY-MM-DD, defaults to today)')
   .addHelpText('after', `
 Examples:
   sheetlink sync                                         JSON to stdout (pipeable)
@@ -53,6 +55,8 @@ Examples:
   sheetlink sync --output sqlite:///~/finance.db         Upsert to SQLite (MAX only)
   sheetlink sync --output postgres://localhost/mydb --slim  Legacy 14-column schema
   sheetlink sync --item VBX93wmRY4Iy...                  Sync one bank only
+  sheetlink sync --from 2026-01-01 --to 2026-03-31       Pull a custom date range
+  sheetlink sync --from 2026-06-01                       From a date through today
   `)
   .action(cmdSync);
 

@@ -34,15 +34,23 @@ async function request(method, path, body = null) {
       detail = errorBody.detail || JSON.stringify(errorBody);
     } catch {}
 
+    // A per-item connection problem (needs reconnect / no accounts). The backend surfaces
+    // these as 422 with a human-readable `detail` (Plaid's display_message). Older backends
+    // used a structured 401; handle both so the CLI prints a clean "reconnect" message
+    // instead of a raw API error. Marked with err.code so cmdSync can format it per-item.
+    const detailObj = typeof detail === 'object' ? detail : (errorBody?.detail ?? null);
+    const legacyLoginReq = res.status === 401 && detailObj && detailObj.error_code === 'ITEM_LOGIN_REQUIRED';
+    if (res.status === 422 || legacyLoginReq) {
+      const err = new Error('ITEM_NEEDS_ATTENTION');
+      err.code = 'ITEM_NEEDS_ATTENTION';
+      // message = the human display_message (string) when present, else the structured one
+      err.detail = legacyLoginReq
+        ? 'Bank connection expired. Reconnect at https://sheetlink.app/dashboard/banks'
+        : (typeof detail === 'string' ? detail : 'This bank needs to be reconnected at https://sheetlink.app/dashboard/banks');
+      if (detailObj && detailObj.item_id) err.item_id = detailObj.item_id;
+      throw err;
+    }
     if (res.status === 401) {
-      // Structured ITEM_LOGIN_REQUIRED from backend
-      const detailObj = typeof detail === 'object' ? detail : (errorBody?.detail ?? null);
-      if (detailObj && detailObj.error_code === 'ITEM_LOGIN_REQUIRED') {
-        const err = new Error('ITEM_LOGIN_REQUIRED');
-        err.code = 'ITEM_LOGIN_REQUIRED';
-        err.item_id = detailObj.item_id;
-        throw err;
-      }
       console.error('Authentication failed. Run `sheetlink auth` to re-authenticate.');
       process.exit(1);
     }
@@ -60,8 +68,15 @@ export async function listItems() {
   return request('GET', '/api/items');
 }
 
-export async function syncItem(itemId) {
-  return request('POST', '/api/sync', { item_id: itemId });
+// DATE-FILTER: `range` is an optional { start, end } (YYYY-MM-DD). When present, the backend pulls
+// that window (clamped to the plan's 730-day cap) instead of the default full-window sync.
+export async function syncItem(itemId, range = null) {
+  const body = { item_id: itemId };
+  if (range && (range.start || range.end)) {
+    if (range.start) body.start_date = range.start;
+    if (range.end) body.end_date = range.end;
+  }
+  return request('POST', '/api/sync', body);
 }
 
 export async function getTierStatus() {
