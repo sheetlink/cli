@@ -37,6 +37,20 @@ sheetlink sync --item <item_id>                       # One bank only
 
 > **Note:** CSV output overwrites the file on every run. For an append/dedup history, use Postgres or SQLite.
 
+### `sheetlink investments`
+Sync investment holdings and activity from brokerages with investment tracking enabled. MAX tier. Enable a brokerage by choosing "Investment account" when you connect it in the extension, Excel add-in, or dashboard.
+
+```bash
+sheetlink investments                                    # Holdings + activity as JSON
+sheetlink investments --output csv --file ~/inv.csv      # Writes ~/inv.csv + ~/inv-activity.csv
+sheetlink investments --output postgres://localhost/mydb # Upsert holdings + activity tables
+sheetlink investments --output sqlite:///~/finance.db    # Upsert to SQLite
+sheetlink investments --item <item_id>                   # One brokerage only
+sheetlink investments --from 2026-01-01 --to 2026-03-31  # Activity in a custom date range
+```
+
+Holdings upsert by account + security; activity dedups by transaction id. Only brokerages with investment tracking enabled return data.
+
 ### `sheetlink items`
 List connected bank accounts.
 

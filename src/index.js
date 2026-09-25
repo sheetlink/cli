@@ -17,6 +17,7 @@ import { cmdAuth } from './commands/auth.js';
 import { cmdSync } from './commands/sync.js';
 import { cmdItems } from './commands/items.js';
 import { cmdConfig } from './commands/config.js';
+import { cmdInvestments } from './commands/investments.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -59,6 +60,28 @@ Examples:
   sheetlink sync --from 2026-06-01                       From a date through today
   `)
   .action(cmdSync);
+
+// ── investments ───────────────────────────────────────────────────────────────
+
+program
+  .command('investments')
+  .description('Sync investment holdings + activity from brokerages with tracking enabled (MAX)')
+  .option('--output <dest>', 'Output destination: json (default), csv, postgres://..., sqlite:///path')
+  .option('--file <path>', 'Base file path for CSV output (holdings), activity written alongside')
+  .option('--item <item_id>', 'One brokerage only (default: all connected banks)')
+  .option('--from <date>', 'Activity start date (YYYY-MM-DD). Clamped to the plan\'s 730-day max')
+  .option('--to <date>', 'Activity end date (YYYY-MM-DD, defaults to today)')
+  .addHelpText('after', `
+Examples:
+  sheetlink investments                                     Holdings + activity as JSON
+  sheetlink investments --output csv --file ~/inv.csv       Writes ~/inv.csv + ~/inv-activity.csv
+  sheetlink investments --output sqlite:///~/finance.db     Upsert to SQLite (holdings + activity)
+  sheetlink investments --item vroavXZ5...                  One brokerage only
+
+Note: only banks with investment tracking enabled return data. Enable it on a brokerage in the
+SheetLink extension, Excel add-in, or dashboard. Requires the MAX tier.
+  `)
+  .action(cmdInvestments);
 
 // ── items ───────────────────────────────────────────────────────────────────
 

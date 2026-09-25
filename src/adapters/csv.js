@@ -136,3 +136,70 @@ export function writeCsv(transactions, filePath = './sheetlink-transactions.csv'
   fs.writeFileSync(filePath, [headers.join(','), ...rows].join('\n') + '\n', 'utf8');
   console.log(`Wrote ${transactions.length} transactions to ${filePath}`);
 }
+
+// ── Investments CSV ──────────────────────────────────────────────────────────
+// Schemas match the Chrome extension + Excel add-in EXACTLY (31-col holdings, 17-col activity).
+// Two snapshot files: <file> for holdings, <file>-activity.csv for activity (each overwrites).
+
+const INVESTMENT_HOLDINGS_HEADERS = [
+  'account_id', 'security_id', 'security_name', 'ticker_symbol', 'security_type',
+  'security_subtype', 'cusip', 'isin', 'sedol', 'quantity', 'cost_basis',
+  'institution_price', 'institution_value', 'price_as_of', 'price_datetime',
+  'vested_quantity', 'vested_value', 'close_price', 'close_price_as_of',
+  'is_cash_equivalent', 'market_identifier_code', 'sector', 'industry',
+  'security_update_datetime', 'option_contract_type', 'option_expiration_date',
+  'option_strike_price', 'option_underlying_ticker', 'iso_currency_code',
+  'source_institution', 'synced_at',
+];
+
+const INVESTMENT_ACTIVITY_HEADERS = [
+  'investment_transaction_id', 'account_id', 'security_id', 'date', 'name', 'type',
+  'subtype', 'quantity', 'price', 'amount', 'fees', 'ticker_symbol', 'security_name',
+  'iso_currency_code', 'cancel_transaction_id', 'source_institution', 'synced_at',
+];
+
+function holdingRow(h, now) {
+  return {
+    account_id: h.account_id, security_id: h.security_id, security_name: h.security_name,
+    ticker_symbol: h.ticker_symbol, security_type: h.security_type, security_subtype: h.security_subtype,
+    cusip: h.cusip, isin: h.isin, sedol: h.sedol, quantity: h.quantity, cost_basis: h.cost_basis,
+    institution_price: h.institution_price, institution_value: h.institution_value,
+    price_as_of: h.price_as_of, price_datetime: h.price_datetime, vested_quantity: h.vested_quantity,
+    vested_value: h.vested_value, close_price: h.close_price, close_price_as_of: h.close_price_as_of,
+    is_cash_equivalent: h.is_cash_equivalent, market_identifier_code: h.market_identifier_code,
+    sector: h.sector, industry: h.industry, security_update_datetime: h.security_update_datetime,
+    option_contract_type: h.option_contract_type, option_expiration_date: h.option_expiration_date,
+    option_strike_price: h.option_strike_price, option_underlying_ticker: h.option_underlying_ticker,
+    iso_currency_code: h.iso_currency_code, source_institution: h.source_institution, synced_at: now,
+  };
+}
+
+function activityRow(t, now) {
+  return {
+    investment_transaction_id: t.investment_transaction_id, account_id: t.account_id,
+    security_id: t.security_id, date: t.date, name: t.name, type: t.type, subtype: t.subtype,
+    quantity: t.quantity, price: t.price, amount: t.amount, fees: t.fees,
+    ticker_symbol: t.ticker_symbol, security_name: t.security_name, iso_currency_code: t.iso_currency_code,
+    cancel_transaction_id: t.cancel_transaction_id, source_institution: t.source_institution, synced_at: now,
+  };
+}
+
+export function writeInvestmentsCsv(holdings, activity, filePath = './sheetlink-investments.csv') {
+  const now = new Date().toISOString();
+  // Holdings -> <file>; activity -> <file>-activity.csv (insert before extension if present).
+  const activityPath = filePath.replace(/(\.csv)?$/i, (m) => `-activity${m || '.csv'}`);
+
+  const hRows = holdings.map(h => {
+    const flat = holdingRow(h, now);
+    return INVESTMENT_HOLDINGS_HEADERS.map(k => escape(flat[k])).join(',');
+  });
+  fs.writeFileSync(filePath, [INVESTMENT_HOLDINGS_HEADERS.join(','), ...hRows].join('\n') + '\n', 'utf8');
+  console.log(`Wrote ${holdings.length} holdings to ${filePath}`);
+
+  const aRows = activity.map(t => {
+    const flat = activityRow(t, now);
+    return INVESTMENT_ACTIVITY_HEADERS.map(k => escape(flat[k])).join(',');
+  });
+  fs.writeFileSync(activityPath, [INVESTMENT_ACTIVITY_HEADERS.join(','), ...aRows].join('\n') + '\n', 'utf8');
+  console.log(`Wrote ${activity.length} investment activity rows to ${activityPath}`);
+}

@@ -220,3 +220,131 @@ export async function writePostgres(transactions, accounts, connectionString, { 
     await client.end();
   }
 }
+
+// ── Investments (MAX) — holdings + activity ──────────────────────────────────
+// Schemas match the extension/Excel (31-col holdings, 17-col activity). Holdings upsert on the
+// composite (account_id, security_id) so a position updates in place; activity upserts on
+// investment_transaction_id (immutable ledger).
+
+const CREATE_INV_HOLDINGS = `
+CREATE TABLE IF NOT EXISTS sheetlink_investment_holdings (
+  account_id               TEXT,
+  security_id              TEXT,
+  security_name            TEXT,
+  ticker_symbol            TEXT,
+  security_type            TEXT,
+  security_subtype         TEXT,
+  cusip                    TEXT,
+  isin                     TEXT,
+  sedol                    TEXT,
+  quantity                 DOUBLE PRECISION,
+  cost_basis               DOUBLE PRECISION,
+  institution_price        DOUBLE PRECISION,
+  institution_value        DOUBLE PRECISION,
+  price_as_of              TEXT,
+  price_datetime           TEXT,
+  vested_quantity          DOUBLE PRECISION,
+  vested_value             DOUBLE PRECISION,
+  close_price              DOUBLE PRECISION,
+  close_price_as_of        TEXT,
+  is_cash_equivalent       BOOLEAN,
+  market_identifier_code   TEXT,
+  sector                   TEXT,
+  industry                 TEXT,
+  security_update_datetime TEXT,
+  option_contract_type     TEXT,
+  option_expiration_date   TEXT,
+  option_strike_price      DOUBLE PRECISION,
+  option_underlying_ticker TEXT,
+  iso_currency_code        TEXT,
+  source_institution       TEXT,
+  synced_at                TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (account_id, security_id)
+)`;
+
+const CREATE_INV_ACTIVITY = `
+CREATE TABLE IF NOT EXISTS sheetlink_investment_activity (
+  investment_transaction_id TEXT PRIMARY KEY,
+  account_id                TEXT,
+  security_id               TEXT,
+  date                      DATE,
+  name                      TEXT,
+  type                      TEXT,
+  subtype                   TEXT,
+  quantity                  DOUBLE PRECISION,
+  price                     DOUBLE PRECISION,
+  amount                    DOUBLE PRECISION,
+  fees                      DOUBLE PRECISION,
+  ticker_symbol             TEXT,
+  security_name             TEXT,
+  iso_currency_code         TEXT,
+  cancel_transaction_id     TEXT,
+  source_institution        TEXT,
+  synced_at                 TIMESTAMP DEFAULT NOW()
+)`;
+
+const UPSERT_INV_HOLDING = `
+INSERT INTO sheetlink_investment_holdings
+  (account_id, security_id, security_name, ticker_symbol, security_type, security_subtype,
+   cusip, isin, sedol, quantity, cost_basis, institution_price, institution_value,
+   price_as_of, price_datetime, vested_quantity, vested_value, close_price, close_price_as_of,
+   is_cash_equivalent, market_identifier_code, sector, industry, security_update_datetime,
+   option_contract_type, option_expiration_date, option_strike_price, option_underlying_ticker,
+   iso_currency_code, source_institution, synced_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,NOW())
+ON CONFLICT (account_id, security_id) DO UPDATE SET
+  quantity = EXCLUDED.quantity,
+  cost_basis = EXCLUDED.cost_basis,
+  institution_price = EXCLUDED.institution_price,
+  institution_value = EXCLUDED.institution_value,
+  price_as_of = EXCLUDED.price_as_of,
+  close_price = EXCLUDED.close_price,
+  synced_at = NOW()`;
+
+const UPSERT_INV_ACTIVITY = `
+INSERT INTO sheetlink_investment_activity
+  (investment_transaction_id, account_id, security_id, date, name, type, subtype,
+   quantity, price, amount, fees, ticker_symbol, security_name, iso_currency_code,
+   cancel_transaction_id, source_institution, synced_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW())
+ON CONFLICT (investment_transaction_id) DO UPDATE SET
+  amount = EXCLUDED.amount,
+  quantity = EXCLUDED.quantity,
+  price = EXCLUDED.price,
+  cancel_transaction_id = EXCLUDED.cancel_transaction_id,
+  synced_at = NOW()`;
+
+export async function writeInvestmentsPostgres(holdings, activity, connectionString) {
+  const { default: pg } = await import('pg').then(m => ({ default: m.default || m }));
+  const { Client } = pg;
+  const client = new Client({ connectionString });
+  await client.connect();
+  try {
+    await client.query(CREATE_INV_HOLDINGS);
+    await client.query(CREATE_INV_ACTIVITY);
+
+    for (const h of holdings) {
+      await client.query(UPSERT_INV_HOLDING, [
+        h.account_id, h.security_id, h.security_name, h.ticker_symbol, h.security_type, h.security_subtype,
+        h.cusip, h.isin, h.sedol, h.quantity ?? null, h.cost_basis ?? null, h.institution_price ?? null,
+        h.institution_value ?? null, h.price_as_of || null, h.price_datetime || null,
+        h.vested_quantity ?? null, h.vested_value ?? null, h.close_price ?? null, h.close_price_as_of || null,
+        h.is_cash_equivalent ?? null, h.market_identifier_code || null, h.sector || null, h.industry || null,
+        h.security_update_datetime || null, h.option_contract_type || null, h.option_expiration_date || null,
+        h.option_strike_price ?? null, h.option_underlying_ticker || null, h.iso_currency_code || null,
+        h.source_institution || null,
+      ]);
+    }
+    for (const t of activity) {
+      await client.query(UPSERT_INV_ACTIVITY, [
+        t.investment_transaction_id, t.account_id, t.security_id, t.date, t.name, t.type, t.subtype,
+        t.quantity ?? null, t.price ?? null, t.amount ?? null, t.fees ?? null, t.ticker_symbol || null,
+        t.security_name || null, t.iso_currency_code || null, t.cancel_transaction_id || null,
+        t.source_institution || null,
+      ]);
+    }
+    console.log(`Synced ${holdings.length} holdings and ${activity.length} investment activity rows to Postgres`);
+  } finally {
+    await client.end();
+  }
+}

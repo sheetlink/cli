@@ -210,3 +210,134 @@ export async function writeSQLite(transactions, accounts, dbPath, { slim = false
 
   console.log(`Synced ${transactions.length} transactions and ${accounts.length} accounts to ${dbPath}`);
 }
+
+// ── Investments (MAX) — holdings + activity ──────────────────────────────────
+// Schemas match the extension/Excel. Holdings PK (account_id, security_id); activity PK
+// investment_transaction_id. Same DB file/tables as the Postgres adapter for parity.
+
+const CREATE_INV_HOLDINGS = `
+CREATE TABLE IF NOT EXISTS sheetlink_investment_holdings (
+  account_id               TEXT,
+  security_id              TEXT,
+  security_name            TEXT,
+  ticker_symbol            TEXT,
+  security_type            TEXT,
+  security_subtype         TEXT,
+  cusip                    TEXT,
+  isin                     TEXT,
+  sedol                    TEXT,
+  quantity                 REAL,
+  cost_basis               REAL,
+  institution_price        REAL,
+  institution_value        REAL,
+  price_as_of              TEXT,
+  price_datetime           TEXT,
+  vested_quantity          REAL,
+  vested_value             REAL,
+  close_price              REAL,
+  close_price_as_of        TEXT,
+  is_cash_equivalent       INTEGER,
+  market_identifier_code   TEXT,
+  sector                   TEXT,
+  industry                 TEXT,
+  security_update_datetime TEXT,
+  option_contract_type     TEXT,
+  option_expiration_date   TEXT,
+  option_strike_price      REAL,
+  option_underlying_ticker TEXT,
+  iso_currency_code        TEXT,
+  source_institution       TEXT,
+  synced_at                TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (account_id, security_id)
+)`;
+
+const CREATE_INV_ACTIVITY = `
+CREATE TABLE IF NOT EXISTS sheetlink_investment_activity (
+  investment_transaction_id TEXT PRIMARY KEY,
+  account_id                TEXT,
+  security_id               TEXT,
+  date                      TEXT,
+  name                      TEXT,
+  type                      TEXT,
+  subtype                   TEXT,
+  quantity                  REAL,
+  price                     REAL,
+  amount                    REAL,
+  fees                      REAL,
+  ticker_symbol             TEXT,
+  security_name             TEXT,
+  iso_currency_code         TEXT,
+  cancel_transaction_id     TEXT,
+  source_institution        TEXT,
+  synced_at                 TEXT DEFAULT (datetime('now'))
+)`;
+
+const UPSERT_INV_HOLDING = `
+INSERT INTO sheetlink_investment_holdings
+  (account_id, security_id, security_name, ticker_symbol, security_type, security_subtype,
+   cusip, isin, sedol, quantity, cost_basis, institution_price, institution_value,
+   price_as_of, price_datetime, vested_quantity, vested_value, close_price, close_price_as_of,
+   is_cash_equivalent, market_identifier_code, sector, industry, security_update_datetime,
+   option_contract_type, option_expiration_date, option_strike_price, option_underlying_ticker,
+   iso_currency_code, source_institution)
+VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+ON CONFLICT(account_id, security_id) DO UPDATE SET
+  quantity=excluded.quantity, cost_basis=excluded.cost_basis,
+  institution_price=excluded.institution_price, institution_value=excluded.institution_value,
+  price_as_of=excluded.price_as_of, close_price=excluded.close_price,
+  synced_at=datetime('now')`;
+
+const UPSERT_INV_ACTIVITY = `
+INSERT INTO sheetlink_investment_activity
+  (investment_transaction_id, account_id, security_id, date, name, type, subtype,
+   quantity, price, amount, fees, ticker_symbol, security_name, iso_currency_code,
+   cancel_transaction_id, source_institution)
+VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+ON CONFLICT(investment_transaction_id) DO UPDATE SET
+  amount=excluded.amount, quantity=excluded.quantity, price=excluded.price,
+  cancel_transaction_id=excluded.cancel_transaction_id, synced_at=datetime('now')`;
+
+// SQLite bind params can't be booleans — coerce is_cash_equivalent to 0/1/null.
+function boolToInt(v) { return v === true ? 1 : (v === false ? 0 : null); }
+
+export async function writeInvestmentsSQLite(holdings, activity, dbPath) {
+  const Database = (await import('better-sqlite3')).default;
+  const db = new Database(dbPath);
+  db.exec(CREATE_INV_HOLDINGS);
+  db.exec(CREATE_INV_ACTIVITY);
+
+  const insertH = db.prepare(UPSERT_INV_HOLDING);
+  const insertA = db.prepare(UPSERT_INV_ACTIVITY);
+
+  const hBatch = db.transaction((rows) => {
+    for (const h of rows) {
+      insertH.run(
+        h.account_id, h.security_id, h.security_name || null, h.ticker_symbol || null,
+        h.security_type || null, h.security_subtype || null, h.cusip || null, h.isin || null, h.sedol || null,
+        h.quantity ?? null, h.cost_basis ?? null, h.institution_price ?? null, h.institution_value ?? null,
+        h.price_as_of || null, h.price_datetime || null, h.vested_quantity ?? null, h.vested_value ?? null,
+        h.close_price ?? null, h.close_price_as_of || null, boolToInt(h.is_cash_equivalent),
+        h.market_identifier_code || null, h.sector || null, h.industry || null, h.security_update_datetime || null,
+        h.option_contract_type || null, h.option_expiration_date || null, h.option_strike_price ?? null,
+        h.option_underlying_ticker || null, h.iso_currency_code || null, h.source_institution || null,
+      );
+    }
+  });
+
+  const aBatch = db.transaction((rows) => {
+    for (const t of rows) {
+      insertA.run(
+        t.investment_transaction_id, t.account_id, t.security_id || null, t.date || null, t.name || null,
+        t.type || null, t.subtype || null, t.quantity ?? null, t.price ?? null, t.amount ?? null,
+        t.fees ?? null, t.ticker_symbol || null, t.security_name || null, t.iso_currency_code || null,
+        t.cancel_transaction_id || null, t.source_institution || null,
+      );
+    }
+  });
+
+  hBatch(holdings);
+  aBatch(activity);
+  db.close();
+
+  console.log(`Synced ${holdings.length} holdings and ${activity.length} investment activity rows to ${dbPath}`);
+}

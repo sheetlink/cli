@@ -1,7 +1,7 @@
 {
   "name": "sheetlink",
-  "version": "0.4.0",
-  "description": "CLI for SheetLink — sync your bank transactions to any destination",
+  "version": "0.5.0",
+  "description": "CLI for SheetLink — sync your bank transactions and investments to any destination",
   "type": "module",
   "bin": {
     "sheetlink": "./src/index.js"

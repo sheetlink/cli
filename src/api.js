@@ -58,7 +58,12 @@ async function request(method, path, body = null) {
       console.error(`Access denied: ${detail}`);
       process.exit(1);
     }
-    throw new Error(`API error ${res.status}: ${detail}`);
+    // Attach status + structured detail so callers can distinguish e.g. 409 (not-enabled) vs
+    // 425 (warming) for investments. Additive — existing callers only read e.code, unaffected.
+    const err = new Error(`API error ${res.status}: ${detail}`);
+    err.status = res.status;
+    err.detail = detailObj || detail;
+    throw err;
   }
 
   return res.json();
@@ -81,4 +86,21 @@ export async function syncItem(itemId, range = null) {
 
 export async function getTierStatus() {
   return request('GET', '/tier/status');
+}
+
+// Investments (MAX-only). Hit the CLI-specific /api/investments/* endpoints. Only items with
+// investment tracking enabled return data; the server returns a clean error otherwise (never a
+// charge). request() maps 422 -> ITEM_NEEDS_ATTENTION and 403 -> exit; the investments command
+// inspects e.code / e.status to print the right per-item message (not-enabled / reconnect / warming).
+export async function getInvestmentHoldings(itemId) {
+  return request('POST', '/api/investments/holdings', { item_id: itemId });
+}
+
+export async function getInvestmentTransactions(itemId, range = null) {
+  const body = { item_id: itemId };
+  if (range && (range.start || range.end)) {
+    if (range.start) body.start_date = range.start;
+    if (range.end) body.end_date = range.end;
+  }
+  return request('POST', '/api/investments/transactions', body);
 }
