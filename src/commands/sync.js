@@ -13,8 +13,8 @@
  *   --slim                    - Write legacy 14-column schema instead of full 34-column schema
  */
 
-import { listItems, syncItem } from '../api.js';
-import { getDefaultOutput } from '../config.js';
+import { listItems, syncItem, getTierStatus, exitUnauthorized } from '../api.js';
+import { getDefaultOutput, getApiKey, getAuthHeader } from '../config.js';
 import { writeJson } from '../adapters/json.js';
 import { writeCsv } from '../adapters/csv.js';
 import { writePostgres } from '../adapters/postgres.js';
@@ -61,11 +61,37 @@ function buildRange(options) {
   return { start: from, end: to };
 }
 
+// TIER: Postgres/SQLite output is a MAX feature. API keys are already MAX-only server-side, so only
+// a browser login (JWT) needs checking, and it happens before any bank is synced.
+async function requireMaxForDatabaseOutput(output) {
+  if (!/^(postgres|postgresql|sqlite):\/\//.test(output) || getApiKey()) return;
+  let status;
+  try {
+    status = await getTierStatus();  // an expired login gets a 401, which request() handles and exits
+  } catch (e) {
+    // The plan check is a nudge, not security: if it can't run (5xx/network), don't block the sync.
+    process.stderr.write(`Could not check your plan (${e.message}). Continuing.\n`);
+    return;
+  }
+  if (!status.authenticated) exitUnauthorized(getAuthHeader());  // defensive: no auth reached the server
+  const tier = String(status.tier || 'free').toUpperCase();
+  if (tier !== 'MAX') {
+    console.error(`Writing to Postgres or SQLite requires the MAX plan (your plan: ${tier}).`);
+    // FREE can't use the CLI at all, so only PRO gets the json/csv alternative.
+    console.error(tier === 'PRO'
+      ? 'Use --output json or --output csv, or upgrade at https://sheetlink.app/pricing'
+      : 'Upgrade at https://sheetlink.app/pricing');
+    process.exit(1);
+  }
+}
+
 export async function cmdSync(options) {
   const output = options.output || getDefaultOutput();
   const itemId = options.item || null;
   const slim = !!options.slim;
   const range = buildRange(options);  // DATE-FILTER: null = default full-window sync
+
+  await requireMaxForDatabaseOutput(output);
 
   // Collect items to sync
   let itemIds;

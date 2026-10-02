@@ -16,7 +16,7 @@ Requires a [SheetLink](https://sheetlink.app) account on the **PRO** or **MAX** 
 Authenticate with SheetLink.
 
 ```bash
-sheetlink auth                        # OAuth login (PRO) — opens browser, JWT valid for ~1 hour
+sheetlink auth                        # OAuth login (PRO): opens browser, login lasts 4 hours
 sheetlink auth --api-key sl_...       # API key (MAX — for automation)
 ```
 
@@ -85,6 +85,8 @@ sheetlink config --set default_output=csv # Set default output
 | Postgres output | — | ✅ |
 | SQLite output | — | ✅ |
 | API key auth (unattended/cron) | — | ✅ |
+
+PRO logins last 4 hours, so scheduled runs (cron, CI) need a MAX API key.
 
 [View pricing →](https://sheetlink.app/pricing)
 

@@ -108,4 +108,9 @@ Environment variable overrides:
   `)
   .action(cmdConfig);
 
-program.parse();
+// Async actions: parseAsync + one catch, so network/5xx errors print one line instead of a stack trace.
+program.parseAsync().catch((e) => {
+  const cause = e && e.cause && e.cause.code ? ` (${e.cause.code})` : '';
+  console.error(`Error: ${e && e.message ? e.message : e}${cause}`);
+  process.exit(1);
+});

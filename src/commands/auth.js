@@ -9,7 +9,7 @@
  *                   Opens Google OAuth in browser, exchanges for JWT,
  *                   stores JWT in config file.
  *
- * Note: PRO JWT auth is interactive only — tokens expire ~1hr.
+ * Note: PRO JWT auth is interactive only. Tokens expire after 4 hours (server-issued, no refresh).
  * For unattended automation, use MAX tier + API key.
  */
 
@@ -38,11 +38,14 @@ export async function cmdAuth(options) {
     console.error('  export SHEETLINK_API_KEY=sl_...');
     console.error('');
 
-    // Verify before saving
+    // Verify before saving, with the NEW key (not whatever credential is already configured)
     try {
-      const { items } = await listItems();
+      const { items } = await listItems(`Bearer ${options.apiKey}`);
       writeConfig({ api_key: options.apiKey, jwt: null });
       console.log('API key saved to ~/.sheetlink/config.json');
+      if (process.env.SHEETLINK_API_KEY && process.env.SHEETLINK_API_KEY !== options.apiKey) {
+        console.error('Note: SHEETLINK_API_KEY is set in your environment and takes priority over the saved key. Update or unset it.');
+      }
       console.log('');
       console.log(`Authenticated. ${items.length} bank${items.length !== 1 ? 's' : ''} connected.`);
     } catch (e) {
@@ -62,7 +65,7 @@ export async function cmdAuth(options) {
   writeConfig({ jwt, api_key: null });
   console.log('');
   console.log('Authenticated. JWT saved to ~/.sheetlink/config.json');
-  console.log('Note: JWT expires in ~1 hour. Re-run `sheetlink auth` when needed.');
+  console.log('Note: this login lasts 4 hours. Run `sheetlink auth` again after that.');
   console.log('For unattended automation, upgrade to MAX and use `sheetlink auth --api-key sl_...`');
   process.exit(0);
 }
