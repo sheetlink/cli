@@ -18,6 +18,7 @@ import { writeJson } from '../adapters/json.js';
 import { writeInvestmentsCsv } from '../adapters/csv.js';
 import { writeInvestmentsPostgres } from '../adapters/postgres.js';
 import { writeInvestmentsSQLite } from '../adapters/sqlite.js';
+import { expandHome } from '../paths.js';
 
 // Reuse the sync command's date-range validation shape (holdings ignore range; activity uses it).
 function buildRange(options) {
@@ -137,7 +138,7 @@ export async function cmdInvestments(options) {
     return;
   }
   if (output === 'csv') {
-    writeInvestmentsCsv(allHoldings, allActivity, options.file);
+    writeInvestmentsCsv(allHoldings, allActivity, expandHome(options.file));
     return;
   }
   if (output.startsWith('postgres://') || output.startsWith('postgresql://')) {
@@ -145,7 +146,7 @@ export async function cmdInvestments(options) {
     return;
   }
   if (output.startsWith('sqlite://')) {
-    const dbPath = output.replace(/^sqlite:\/\//, '') || './sheetlink.db';
+    const dbPath = expandHome(output.replace(/^sqlite:\/\//, '')) || './sheetlink.db';
     writeInvestmentsSQLite(allHoldings, allActivity, dbPath);
     return;
   }

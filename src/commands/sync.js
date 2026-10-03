@@ -19,6 +19,7 @@ import { writeJson } from '../adapters/json.js';
 import { writeCsv } from '../adapters/csv.js';
 import { writePostgres } from '../adapters/postgres.js';
 import { writeSQLite } from '../adapters/sqlite.js';
+import { expandHome } from '../paths.js';
 
 /**
  * Enrich transactions with account_name and account_mask from the accounts array.
@@ -177,7 +178,7 @@ export async function cmdSync(options) {
   }
 
   if (output === 'csv') {
-    writeCsv(allTransactions, options.file, { slim });
+    writeCsv(allTransactions, expandHome(options.file), { slim });
     return;
   }
 
@@ -187,7 +188,7 @@ export async function cmdSync(options) {
   }
 
   if (output.startsWith('sqlite://')) {
-    const dbPath = output.replace(/^sqlite:\/\//, '') || './sheetlink.db';
+    const dbPath = expandHome(output.replace(/^sqlite:\/\//, '')) || './sheetlink.db';
     writeSQLite(allTransactions, allAccounts, dbPath, { slim });
     return;
   }
