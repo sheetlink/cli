@@ -43,11 +43,11 @@ function buildRange(options) {
 // Codes come from the shared backend service (investments_service.py).
 function describeInvestErr(name, e) {
   switch (e && e.status) {
-    case 409: return `${name} — investment tracking is off (enable it, then retry).`;
-    case 425: return `${name} — still preparing data, try again shortly.`;
-    case 422: return `${name} — reconnect needed to enable investment tracking.`;
-    case 503: return `${name} — temporarily unavailable, try again shortly.`;
-    default:  return `${name} — ${e && e.message ? e.message : 'could not fetch investments'}.`;
+    case 409: return `${name}: investment tracking is off (enable it, then retry).`;
+    case 425: return `${name}: still preparing data, try again shortly.`;
+    case 422: return `${name}: reconnect needed to enable investment tracking.`;
+    case 503: return `${name}: temporarily unavailable, try again shortly.`;
+    default:  return `${name}: ${e && e.message ? e.message : 'could not fetch investments'}.`;
   }
 }
 
@@ -111,7 +111,7 @@ export async function cmdInvestments(options) {
     if (!anyData && hadError) {
       // Both calls failed. If it's "not enabled", that's a skip (expected for banks w/o investments).
       if (hadError.status === 409) {
-        process.stderr.write(`\r· ${name} — no investment tracking (skipped)\n`);
+        process.stderr.write(`\r· ${name}: no investment tracking (skipped)\n`);
       } else {
         process.stderr.write(`\r⚠ ${describeInvestErr(name, hadError)}\n`);
       }
@@ -122,7 +122,7 @@ export async function cmdInvestments(options) {
     allHoldings.push(...holdings);
     allActivity.push(...activity);
     results.push({ item_id: id, institution_name: item.institution_name, holdings, investment_transactions: activity });
-    process.stderr.write(`\r✓ ${name} — ${holdings.length} holdings, ${activity.length} activity\n`);
+    process.stderr.write(`\r✓ ${name}: ${holdings.length} holdings, ${activity.length} activity\n`);
   }
 
   if (allHoldings.length === 0 && allActivity.length === 0) {

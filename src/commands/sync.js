@@ -133,7 +133,7 @@ export async function cmdSync(options) {
       allAccounts.push(...(result.accounts || []));
       results.push({ item_id: id, ...result, transactions: enriched });
       clearInterval(spinner);
-      process.stderr.write(`\r✓ Synced ${id} — ${enriched.length} transactions\n`);
+      process.stderr.write(`\r✓ Synced ${id}: ${enriched.length} transactions\n`);
     } catch (e) {
       clearInterval(spinner);
       const name = institutionNames[id] || id;
@@ -142,10 +142,10 @@ export async function cmdSync(options) {
       // no_accounts / error (all surfaced as ITEM_NEEDS_ATTENTION by api.js).
       if (e.code === 'ITEM_NEEDS_ATTENTION' || e.code === 'ITEM_LOGIN_REQUIRED') {
         const msg = e.detail || 'Reconnect at https://sheetlink.app/dashboard/banks';
-        process.stderr.write(`\r⚠ ${name} — ${msg}\n`);
+        process.stderr.write(`\r⚠ ${name}: ${msg}\n`);
         needsAttention.push(name);
       } else {
-        process.stderr.write(`\r✗ ${name} — ${e.message}\n`);
+        process.stderr.write(`\r✗ ${name}: ${e.message}\n`);
       }
     }
   }

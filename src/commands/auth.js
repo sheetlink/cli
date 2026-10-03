@@ -100,7 +100,7 @@ async function googleOAuthFlow() {
         res.on('finish', () => { server.closeAllConnections?.(); server.close(); });
 
         if (error) return reject(new Error(`OAuth error: ${error}`));
-        if (returnedState !== state) return reject(new Error('State mismatch — possible CSRF'));
+        if (returnedState !== state) return reject(new Error('State mismatch (possible CSRF)'));
         if (!code) return reject(new Error('No authorization code received'));
 
         // Exchange code for id_token via token endpoint
