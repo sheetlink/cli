@@ -1,13 +1,14 @@
 {
   "name": "sheetlink",
-  "version": "0.6.1",
-  "description": "CLI for SheetLink — sync your bank transactions and investments to any destination",
+  "version": "0.6.2",
+  "description": "CLI for SheetLink: sync your bank transactions and investments to JSON, CSV, Postgres, SQLite, Beancount or hledger",
   "type": "module",
   "bin": {
     "sheetlink": "./src/index.js"
   },
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "node --test test/"
   },
   "files": [
     "src/"
@@ -18,11 +19,13 @@
   "dependencies": {
     "commander": "^12.1.0",
     "open": "^10.1.0",
-    "pg": "^8.13.3",
-    "better-sqlite3": "^11.9.1"
+    "pg": "^8.13.3"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^13.0.3"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "keywords": [
     "sheetlink",
@@ -30,9 +33,12 @@
     "finance",
     "banking",
     "transactions",
-    "cli"
+    "cli",
+    "beancount",
+    "hledger",
+    "plain-text-accounting"
   ],
-  "author": "Rudy Martin Del Campo <rudy@sheetlink.app>",
+  "author": "SheetLink <support@sheetlink.app>",
   "license": "MIT",
   "repository": {
     "type": "git",

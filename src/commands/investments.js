@@ -147,7 +147,7 @@ export async function cmdInvestments(options) {
   }
   if (output.startsWith('sqlite://')) {
     const dbPath = expandHome(output.replace(/^sqlite:\/\//, '')) || './sheetlink.db';
-    writeInvestmentsSQLite(allHoldings, allActivity, dbPath);
+    await writeInvestmentsSQLite(allHoldings, allActivity, dbPath);
     return;
   }
 

@@ -133,6 +133,27 @@ ON CONFLICT (account_id) DO UPDATE SET
   available_balance = EXCLUDED.available_balance,
   last_synced_at = NOW()`;
 
+// SINCE-LAST-SYNC: the latest stored transaction date per account ({account_id: 'YYYY-MM-DD'}). Empty when
+// the table doesn't exist yet, so a first run pulls the full window. ::text keeps a DATE column out of JS Date
+// (which would shift it by the local time zone).
+export async function latestDatesPostgres(connectionString) {
+  const { default: pg } = await import('pg').then(m => ({ default: m.default || m }));
+  const client = new pg.Client({ connectionString });
+  await client.connect();
+  try {
+    const t = await client.query("SELECT to_regclass('sheetlink_transactions') IS NOT NULL AS ok");
+    if (!t.rows[0].ok) return {};
+    const r = await client.query('SELECT account_id, MAX(date)::text AS latest FROM sheetlink_transactions GROUP BY account_id');
+    const out = {};
+    for (const row of r.rows) {
+      if (row.account_id && row.latest) out[row.account_id] = row.latest.slice(0, 10);
+    }
+    return out;
+  } finally {
+    await client.end();
+  }
+}
+
 export async function writePostgres(transactions, accounts, connectionString, { slim = false } = {}) {
   const { default: pg } = await import('pg').then(m => ({ default: m.default || m }));
   const { Client } = pg;

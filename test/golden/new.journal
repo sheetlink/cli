@@ -1,0 +1,52 @@
+; Written by the sheetlink CLI (sheetlink sync --output hledger). Each run appends new transactions;
+; entries already here are matched by plaid_id and left as they are.
+
+account Assets:Bank:AllyBank:OnlineSavings-9876
+account Assets:Bank:Chase:TotalChecking-1111
+account Expenses:FoodAndDrink
+account Expenses:GeneralMerchandise
+account Expenses:Transportation
+account Income:Income
+account Income:Uncategorized
+account Liabilities:Card:Chase:SapphirePreferred-4242
+
+2026-10-01 * ACME PAYROLL | ACME PAYROLL
+    ; plaid_id: tx-payroll
+    ; category: INCOME
+    Assets:Bank:Chase:TotalChecking-1111  3000.00 USD
+    Income:Income  -3000.00 USD
+
+2026-10-02 * Interest Paid | Interest Paid
+    ; plaid_id: tx-interest
+    Assets:Bank:AllyBank:OnlineSavings-9876  12.34 USD
+    Income:Uncategorized  -12.34 USD
+
+2026-10-03 * Blue Bottle 'Coffee' | BLUE BOTTLE #12, SF / CA
+    ; plaid_id: tx-coffee
+    ; category: FOOD_AND_DRINK
+    Liabilities:Card:Chase:SapphirePreferred-4242  -5.75 USD
+    Expenses:FoodAndDrink  5.75 USD
+
+2026-10-05 * Target | TARGET REFUND
+    ; plaid_id: tx-refund
+    ; category: GENERAL_MERCHANDISE
+    Liabilities:Card:Chase:SapphirePreferred-4242  20.00 USD
+    Expenses:GeneralMerchandise  -20.00 USD
+
+2026-10-06 ! Shell | SHELL OIL
+    ; plaid_id: tx-pending
+    ; category: TRANSPORTATION
+    Liabilities:Card:Chase:SapphirePreferred-4242  -42.00 USD
+    Expenses:Transportation  42.00 USD
+
+2026-10-08 * SheetLink balance
+    ; sheetlink_balance: 2026-10-08 Assets:Bank:Chase:TotalChecking-1111
+    Assets:Bank:Chase:TotalChecking-1111  0 USD = 2500.50 USD
+
+2026-10-08 * SheetLink balance
+    ; sheetlink_balance: 2026-10-08 Liabilities:Card:Chase:SapphirePreferred-4242
+    Liabilities:Card:Chase:SapphirePreferred-4242  0 USD = -310.25 USD
+
+2026-10-08 * SheetLink balance
+    ; sheetlink_balance: 2026-10-08 Assets:Bank:AllyBank:OnlineSavings-9876
+    Assets:Bank:AllyBank:OnlineSavings-9876  0 USD = 10000.00 USD

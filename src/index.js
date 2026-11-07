@@ -3,7 +3,7 @@
 /**
  * SheetLink CLI
  *
- * Sync your bank transactions to any destination — JSON, CSV, Postgres, SQLite.
+ * Sync your bank transactions to any destination: JSON, CSV, Postgres, SQLite, Beancount, hledger.
  *
  * PRO tier:  interactive auth (JWT), manual runs
  * MAX tier:  API key auth, unattended/cron automation
@@ -40,12 +40,16 @@ program
 program
   .command('sync')
   .description('Sync bank transactions and output to chosen destination')
-  .option('--output <dest>', 'Output destination: json (default), csv, postgres://..., sqlite:///path')
-  .option('--file <path>', 'File path for CSV output (default: ./sheetlink-transactions.csv)')
+  .option('--output <dest>', 'Output destination: json (default), csv, postgres://..., sqlite:///path, beancount, hledger')
+  .option('--file <path>', 'File for CSV, Beancount or hledger output (default: ./sheetlink-transactions.csv, ./sheetlink.beancount, ./sheetlink.journal)')
   .option('--item <item_id>', 'Sync a specific item only (default: all connected banks)')
   .option('--slim', 'Write 14-column schema instead of full 34-column schema')
   .option('--from <date>', 'Start of a custom date range (YYYY-MM-DD). Clamped to the plan\'s 730-day max')
   .option('--to <date>', 'End of a custom date range (YYYY-MM-DD, defaults to today)')
+  .option('--full', 'Postgres/SQLite: pull the whole history instead of since the last stored date')
+  .option('--account-map <path>', 'Beancount/hledger: JSON mapping Plaid account ids and categories to ledger accounts')
+  .option('--include-pending', 'Beancount/hledger: also write pending transactions (flagged !)')
+  .option('--balances', 'Beancount/hledger: add a balance assertion per account at Plaid\'s current balance')
   .addHelpText('after', `
 Examples:
   sheetlink sync                                         JSON to stdout (pipeable)
@@ -58,6 +62,13 @@ Examples:
   sheetlink sync --item VBX93wmRY4Iy...                  Sync one bank only
   sheetlink sync --from 2026-01-01 --to 2026-03-31       Pull a custom date range
   sheetlink sync --from 2026-06-01                       From a date through today
+  sheetlink sync --output sqlite:///~/finance.db --full  Re-pull the whole history into the database
+  sheetlink sync --output beancount --file books/bank.beancount --balances
+                                                         Append new transactions to a Beancount file
+  sheetlink sync --output hledger --account-map map.json Append to ./sheetlink.journal, mapped accounts only
+
+Postgres and SQLite runs pull each bank from its latest stored date minus 30 days (the
+full history on the first run, or when a bank has an account with nothing stored yet).
   `)
   .action(cmdSync);
 

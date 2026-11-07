@@ -119,8 +119,40 @@ ON CONFLICT(account_id) DO UPDATE SET
   name=excluded.name, current_balance=excluded.current_balance,
   available_balance=excluded.available_balance, last_synced_at=datetime('now')`;
 
+// better-sqlite3 is an optional dependency (0.6.2): it has no prebuilt binary for some Node versions, and a
+// failed native build must not stop `npm install -g sheetlink` for people who never write SQLite.
+async function loadDatabase() {
+  try {
+    return (await import('better-sqlite3')).default;
+  } catch (e) {
+    console.error(`SQLite output needs the better-sqlite3 module, which isn't installed on this computer (Node ${process.versions.node}).`);
+    console.error('Reinstall with `npm install -g sheetlink` on Node 22 or later, or use --output postgres://..., csv or json.');
+    process.exit(1);
+  }
+}
+
+// SINCE-LAST-SYNC: the latest stored transaction date per account ({account_id: 'YYYY-MM-DD'}). Empty when
+// the file or table doesn't exist yet, so a first run pulls the full window.
+export async function latestDatesSQLite(dbPath) {
+  const fs = await import('node:fs');
+  if (!fs.existsSync(dbPath)) return {};
+  const Database = await loadDatabase();
+  const db = new Database(dbPath, { readonly: true });
+  try {
+    const exists = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='sheetlink_transactions'").get();
+    if (!exists) return {};
+    const out = {};
+    for (const r of db.prepare('SELECT account_id, MAX(date) AS latest FROM sheetlink_transactions GROUP BY account_id').all()) {
+      if (r.account_id && r.latest) out[r.account_id] = String(r.latest).slice(0, 10);
+    }
+    return out;
+  } finally {
+    db.close();
+  }
+}
+
 export async function writeSQLite(transactions, accounts, dbPath, { slim = false } = {}) {
-  const Database = (await import('better-sqlite3')).default;
+  const Database = await loadDatabase();
 
   const db = new Database(dbPath);
   db.exec(slim ? CREATE_TRANSACTIONS_SLIM : CREATE_TRANSACTIONS_FULL);
@@ -301,7 +333,7 @@ ON CONFLICT(investment_transaction_id) DO UPDATE SET
 function boolToInt(v) { return v === true ? 1 : (v === false ? 0 : null); }
 
 export async function writeInvestmentsSQLite(holdings, activity, dbPath) {
-  const Database = (await import('better-sqlite3')).default;
+  const Database = await loadDatabase();
   const db = new Database(dbPath);
   db.exec(CREATE_INV_HOLDINGS);
   db.exec(CREATE_INV_ACTIVITY);
